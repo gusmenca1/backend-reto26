@@ -7,13 +7,18 @@ import org.springframework.stereotype.Service;
 
 import apirest.visitas.modelo.entities.Reserva;
 import apirest.visitas.modelo.entities.Usuario;
+import apirest.visitas.modelo.entities.Visita;
 import apirest.visitas.modelo.repository.ReservaRepository;
+import apirest.visitas.modelo.repository.VisitaRepository;
 
 @Service
 public class ReservaServiceImplMySql8 implements ReservaService {
 
     @Autowired
     private ReservaRepository reservaRepository;
+
+    @Autowired
+    private VisitaRepository visitaRepository;
 
     @Override
     public List<Reserva> findAll() {
@@ -54,12 +59,20 @@ public class ReservaServiceImplMySql8 implements ReservaService {
 
     // Validación: aforo disponible suficiente
     public boolean aforoSuficiente(Reserva reserva) {
-        Integer aforoMaximo = reserva.getVisita().getAforoMaximo();
+        Integer idVisita = reserva.getVisita().getIdVisita();
+
+        // Cargamos la visita completa desde la BD
+        Visita visitaCompleta = visitaRepository.findById(idVisita).orElse(null);
+        if (visitaCompleta == null) return false;
+
+        Integer aforoMaximo = visitaCompleta.getAforoMaximo();
+
         List<Reserva> reservasVisita = reservaRepository
-                .findByUsuarioAndVisita_IdVisita(reserva.getUsuario(), reserva.getVisita().getIdVisita());
+                .findByUsuarioAndVisita_IdVisita(reserva.getUsuario(), idVisita);
         Integer totalReservado = reservasVisita.stream()
                 .mapToInt(Reserva::getCantidad)
                 .sum();
+
         return (totalReservado + reserva.getCantidad()) <= aforoMaximo;
     }
 }
